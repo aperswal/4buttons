@@ -138,9 +138,9 @@ export default function Home() {
   const handleFart = () => {
     try {
       playFart?.();
-    } catch (e) {
+    } catch {
       // Fallback: Create fart sound with Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
@@ -172,7 +172,7 @@ export default function Home() {
     window.location.reload();
   };
 
-  const handleBannerClose = (e: React.MouseEvent, bannerId: number) => {
+  const handleBannerClose = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowModal(true);
@@ -269,11 +269,7 @@ export default function Home() {
             </a>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowModal(true);
-              }}
+              onClick={handleBannerClose}
               className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold hover:bg-red-800 border-2 border-white cursor-pointer"
               style={{ zIndex: 100 }}
             >
@@ -287,7 +283,7 @@ export default function Home() {
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[300]">
           <div className="bg-white p-8 rounded-lg max-w-md animate-bounce border-8 border-red-600 shadow-2xl">
             <h2 className="text-3xl font-bold mb-4 text-red-600">
-              🚨 WAIT! DON'T GO! 🚨
+              🚨 WAIT! DON&apos;T GO! 🚨
             </h2>
             <p className="text-xl mb-4 text-red-600">
               Send $2.99 worth of Bitcoin to these coordinates:
