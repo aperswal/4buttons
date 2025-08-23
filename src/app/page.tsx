@@ -180,7 +180,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 relative overflow-hidden">
-      <div className="flex flex-col items-center justify-center min-h-screen gap-8 z-10 relative">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-8 relative" style={{ zIndex: 5 }}>
         <div className="grid grid-cols-2 gap-6">
           <button
             onClick={handleFart}
@@ -240,59 +240,64 @@ export default function Home() {
       {banners.map((banner) => (
         <div
           key={banner.id}
-          className="absolute animate-pulse"
+          className="absolute z-20"
           style={{
             left: banner.position.split(' ')[0],
-            top: banner.position.split(' ')[1],
-            animation: `blink ${1 + Math.random() * 2}s infinite`
+            top: banner.position.split(' ')[1]
           }}
         >
-          <a
-            href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block relative group"
-          >
-            <div className={`
-              px-4 py-2 text-xs font-bold border-4 shadow-lg
-              ${banner.id % 5 === 0 ? 'bg-yellow-300 border-red-600 text-red-900' :
-                banner.id % 5 === 1 ? 'bg-lime-400 border-blue-600 text-blue-900' :
-                banner.id % 5 === 2 ? 'bg-orange-400 border-green-600 text-green-900' :
-                banner.id % 5 === 3 ? 'bg-cyan-300 border-purple-600 text-purple-900' :
-                'bg-pink-300 border-yellow-600 text-yellow-900'}
-              ${banner.id % 3 === 0 ? 'animate-spin' : ''}
-              ${banner.id % 7 === 0 ? 'text-lg' : ''}
-            `}>
+          <div className="relative inline-block">
+            <a
+              href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`
+                block px-4 py-2 text-xs font-bold border-4 shadow-lg cursor-pointer
+                ${banner.id % 5 === 0 ? 'bg-yellow-300 border-red-600 text-red-900' :
+                  banner.id % 5 === 1 ? 'bg-lime-400 border-blue-600 text-blue-900' :
+                  banner.id % 5 === 2 ? 'bg-orange-400 border-green-600 text-green-900' :
+                  banner.id % 5 === 3 ? 'bg-cyan-300 border-purple-600 text-purple-900' :
+                  'bg-pink-300 border-yellow-600 text-yellow-900'}
+                ${banner.id % 3 === 0 ? 'animate-spin' : 'animate-pulse'}
+                ${banner.id % 7 === 0 ? 'text-lg' : ''}
+              `}
+              style={{
+                animation: `blink ${1 + Math.random() * 2}s infinite`
+              }}
+            >
               {banner.text}
-            </div>
+            </a>
             <button
-              onClick={(e) => handleBannerClose(e, banner.id)}
-              className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold hover:bg-red-800 border-2 border-white"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowModal(true);
+              }}
+              className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold hover:bg-red-800 border-2 border-white cursor-pointer"
+              style={{ zIndex: 100 }}
             >
               X
             </button>
-          </a>
+          </div>
         </div>
       ))}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]">
-          <div className="bg-white p-8 rounded-lg max-w-md animate-bounce">
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[300]">
+          <div className="bg-white p-8 rounded-lg max-w-md animate-bounce border-8 border-red-600 shadow-2xl">
             <h2 className="text-3xl font-bold mb-4 text-red-600">
               🚨 WAIT! DON'T GO! 🚨
             </h2>
-            <p className="text-xl mb-4">
-              Subscribe for only $2.99/month!
+            <p className="text-xl mb-4 text-red-600">
+              Send $2.99 worth of Bitcoin to these coordinates:
             </p>
-            <p className="text-lg mb-4">
-              Or ship Bitcoin to these coordinates:
-            </p>
-            <p className="font-mono bg-gray-200 p-2 rounded mb-6">
+            <p className="font-mono bg-gray-200 p-2 rounded mb-6 text-red-600">
               37.2431° N, 115.7930° W
             </p>
             <button
               onClick={() => setShowModal(false)}
-              className="w-full bg-blue-500 text-white py-3 rounded font-bold hover:bg-blue-600"
+              className="w-full bg-red-600 text-white py-3 rounded font-bold hover:bg-red-800"
             >
               NO THANKS, I HATE FUN
             </button>
