@@ -34,15 +34,25 @@ const DEFAULT_TAX_RATE = 0.21;
 // Companies tag the same line item differently, so each one is a list of
 // candidates in order of preference. US GAAP names first, then IFRS.
 const TAGS = {
+  // "Revenues" is the total when a company reports it. The contract-revenue tags can be a part of it
+  // (Walmart's excludes membership fees) or a gross figure before rebates (Mastercard's).
   revenue: [
-    "RevenueFromContractWithCustomerExcludingAssessedTax",
     "Revenues",
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
     "RevenueFromContractWithCustomerIncludingAssessedTax",
     "SalesRevenueNet",
     "RevenuesNetOfInterestExpense",
     "Revenue",
   ],
-  costOfRevenue: ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfGoodsSold", "CostOfSales"],
+  costOfRevenue: [
+    "CostOfRevenue",
+    "CostOfGoodsAndServicesSold",
+    "CostOfGoodsSold",
+    "CostOfSales",
+    "CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization",
+  ],
+  // An insurer's main cost is claims, which it does not tag as cost of revenue, so it has no gross margin.
+  insuranceClaims: ["PolicyholderBenefitsAndClaimsIncurredNet", "PolicyholderBenefitsAndClaimsIncurredHealthCare"],
   grossProfit: ["GrossProfit"],
   netIncome: [
     "NetIncomeLoss",
@@ -52,6 +62,7 @@ const TAGS = {
   ],
   eps: [
     "EarningsPerShareDiluted",
+    "IncomeLossFromContinuingOperationsPerDilutedShare",
     "DilutedEarningsLossPerShare",
     "EarningsPerShareBasicAndDiluted",
     "EarningsPerShareBasic",
@@ -71,19 +82,28 @@ const TAGS = {
     "EquityAttributableToOwnersOfParent",
     "Equity",
   ],
-  debtNoncurrent: [
-    "LongTermDebtNoncurrent",
-    "LongTermDebtAndCapitalLeaseObligations",
+  // Long-term debt as a single balance-sheet line.
+  debtNoncurrent: ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongtermBorrowings"],
+  // Long-term debt listed kind by kind. These are added together.
+  debtNoncurrentKinds: [
     "LongTermNotesPayable",
+    "SeniorLongTermNotes",
+    "ConvertibleDebtNoncurrent",
     "ConvertibleNotesPayableNoncurrent",
-    "LongtermBorrowings",
+    "LongTermLoansFromBank",
+    "NoncurrentPortionOfNoncurrentBondsIssued",
   ],
-  debtCurrentPortion: ["LongTermDebtCurrent", "LongTermDebtAndCapitalLeaseObligationsCurrent"],
-  debtShortTerm: ["ShortTermBorrowings", "CommercialPaper", "ShorttermBorrowings"],
+  debtCurrentPortion: [
+    "LongTermDebtCurrent",
+    "LongTermDebtAndCapitalLeaseObligationsCurrent",
+    "ConvertibleDebtCurrent",
+    "SeniorNotesCurrent",
+  ],
+  debtShortTerm: ["ShortTermBorrowings", "OtherShortTermBorrowings", "CommercialPaper", "ShorttermBorrowings"],
   // Everything due within a year: short-term borrowings plus the current portion of long-term debt.
   debtDueWithinYear: ["DebtCurrent", "CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings"],
   // Long-term debt including its current portion.
-  debtLongTermTotal: ["LongTermDebt", "Borrowings"],
+  debtLongTermTotal: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities", "Borrowings"],
 } satisfies Record<string, string[]>;
 
 type Series = { unit: string; facts: Fact[] };
@@ -153,10 +173,8 @@ export function compute(company: CompanyFacts, prices: Prices | null): Financial
     const flow = (tags: string[]) => find(company, tags, end, coversFullYear)?.fact.val ?? null;
     const balance = (tags: string[]) => find(company, tags, end, isBalance)?.fact.val ?? null;
 
-    // Total revenue is the largest of the revenue lines a company reports.
-    const revenues = TAGS.revenue.map((tag) => flow([tag])).filter((v) => v !== null);
-    const revenue = revenues.length ? Math.max(...revenues) : null;
-    const costOfRevenue = flow(TAGS.costOfRevenue);
+    const revenue = flow(TAGS.revenue);
+    const costOfRevenue = flow(TAGS.insuranceClaims) === null ? flow(TAGS.costOfRevenue) : null;
     const grossProfit =
       flow(TAGS.grossProfit) ?? (revenue !== null && costOfRevenue !== null ? revenue - costOfRevenue : null);
 
@@ -220,12 +238,19 @@ export function compute(company: CompanyFacts, prices: Prices | null): Financial
 }
 
 function totalDebt(balance: (tags: string[]) => number | null): number {
-  const noncurrent = balance(TAGS.debtNoncurrent);
+  // Some companies report long-term debt as one line and some list each kind of note.
+  // A few do both (the line being one of the kinds), so take whichever is larger.
+  const kinds = TAGS.debtNoncurrentKinds.reduce((sum, tag) => sum + (balance([tag]) ?? 0), 0);
+  const noncurrent = Math.max(balance(TAGS.debtNoncurrent) ?? 0, kinds);
   const dueWithinYear =
     balance(TAGS.debtDueWithinYear) ??
     (balance(TAGS.debtCurrentPortion) ?? 0) + (balance(TAGS.debtShortTerm) ?? 0);
-  if (noncurrent !== null) return noncurrent + dueWithinYear;
+  if (noncurrent > 0) return noncurrent + dueWithinYear;
+  // "LongTermDebt" should include its current portion, so only short-term borrowings are added to it.
+  // Companies that report it next to "DebtCurrent" (Tesla) mean the part due after a year.
   const longTermTotal = balance(TAGS.debtLongTermTotal);
-  if (longTermTotal !== null) return longTermTotal + (balance(TAGS.debtShortTerm) ?? 0);
+  if (longTermTotal !== null) {
+    return longTermTotal + (balance(TAGS.debtDueWithinYear) ?? balance(TAGS.debtShortTerm) ?? 0);
+  }
   return dueWithinYear;
 }
