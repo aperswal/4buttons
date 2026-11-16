@@ -201,10 +201,10 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
         onMouseDown={(event) => event.preventDefault() /* keep focus in the input */}
         className="absolute inset-x-0 top-full z-20 mt-2 rounded-xl border border-line bg-surface p-1 shadow-xl shadow-black/5"
       >
-        {!typed && <div className="px-3 pt-2 pb-1 text-xs text-ink-3">Recent</div>}
+        {!typed && <div className="px-3 pt-2 pb-1 text-xs text-ink-2">Recent</div>}
         {waiting &&
           [0, 1, 2].map((i) => (
-            <div key={i} className="flex h-10 animate-pulse items-center gap-3 px-3">
+            <div key={i} className="flex h-10 items-center gap-3 px-3 motion-safe:animate-pulse">
               <span className="h-3 w-10 rounded bg-wash" />
               <span className="h-3 w-40 rounded bg-wash" />
             </div>

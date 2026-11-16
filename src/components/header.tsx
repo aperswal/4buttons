@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Search } from "./search";
 
-export function Logo() {
+/** The mark and wordmark. `compact` drops the wordmark on small screens, where the search box needs the room. */
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2 font-semibold tracking-tight">
       <svg aria-hidden viewBox="0 0 32 32" className="size-6">
@@ -11,7 +12,7 @@ export function Logo() {
           className="fill-page"
         />
       </svg>
-      Fundamentals
+      <span className={compact ? "max-sm:hidden" : undefined}>Fundamentals</span>
     </span>
   );
 }
@@ -19,8 +20,8 @@ export function Logo() {
 export function Header() {
   return (
     <header className="flex items-center justify-between gap-4 py-3">
-      <Link href="/" aria-label="Fundamentals home" className="shrink-0 [&>span]:max-sm:text-[0px]">
-        <Logo />
+      <Link href="/" aria-label="Fundamentals home" className="shrink-0">
+        <Logo compact />
       </Link>
       <div className="w-full max-w-sm">
         <Search />

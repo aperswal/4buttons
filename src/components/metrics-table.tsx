@@ -1,5 +1,5 @@
 import type { Fundamentals } from "@/lib/fundamentals";
-import { METRICS } from "@/lib/format";
+import { METRICS, type Metric } from "@/lib/format";
 
 // One column per year; from md up, a leading column for the metric names.
 const GRID =
@@ -7,74 +7,84 @@ const GRID =
 const ROW = `${GRID} border-t border-line px-2 py-2.5 md:px-4`;
 const LABEL = "col-span-full px-2 pb-2 text-sm font-medium md:col-span-1 md:self-center md:pb-0";
 
-const years = (count: number) => ({ "--years": count }) as React.CSSProperties;
+const columns = (count: number) => ({ "--years": count }) as React.CSSProperties;
+const emphasis = (latest: boolean) => (latest ? "font-medium text-ink" : "text-ink-2");
 
 export function MetricsTable({ data }: { data: Fundamentals }) {
   const latest = data.years.length - 1;
 
   return (
-    <div role="table" aria-label="Annual metrics" style={years(data.years.length)} className="rounded-2xl border border-line bg-surface">
+    <div
+      role="table"
+      aria-label="Annual metrics"
+      style={columns(data.years.length)}
+      className="rounded-2xl border border-line bg-surface"
+    >
       <div role="row" className={`${GRID} sticky top-0 z-10 rounded-t-2xl bg-surface px-2 py-2.5 md:px-4`}>
         <span className="max-md:hidden" />
         {data.years.map((year, i) => (
-          <span
-            key={year}
-            role="columnheader"
-            className={`text-center text-xs tabular-nums ${i === latest ? "font-medium text-ink" : "text-ink-2"}`}
-          >
+          <span key={year} role="columnheader" className={`text-center text-xs tabular-nums ${emphasis(i === latest)}`}>
             {year}
           </span>
         ))}
       </div>
-
-      {METRICS.map(({ key, label, format }) => {
-        const values = data.metrics[key];
-        const present = values.filter((value) => value !== null);
-        const top = Math.max(0, ...present);
-        const bottom = Math.min(0, ...present);
-        const span = top - bottom;
-        const zero = span ? (top / span) * 100 : 100; // baseline, % from the top of the plot
-
-        return (
-          <div key={key} role="row" className={ROW}>
-            <span role="rowheader" className={LABEL}>
-              {label}
-            </span>
-            {values.map((value, i) => (
-              <div key={data.years[i]} role="cell">
-                <div
-                  className={`text-center text-[13px] tabular-nums sm:text-sm ${i === latest ? "font-medium text-ink" : "text-ink-2"}`}
-                >
-                  {value === null ? "—" : format(value, data.currency)}
-                </div>
-                <div aria-hidden className="relative mt-1.5 h-9">
-                  {value !== null && value !== 0 && (
-                    <span
-                      className={`absolute left-1/2 w-6 -translate-x-1/2 ${value > 0 ? "rounded-t bg-bar" : "rounded-b bg-bar-loss"}`}
-                      style={{
-                        [value > 0 ? "bottom" : "top"]: `${value > 0 ? 100 - zero : zero}%`,
-                        height: `max(2px, ${(Math.abs(value) / span) * 100}%)`,
-                      }}
-                    />
-                  )}
-                  <span className="absolute inset-x-0 h-px bg-axis" style={{ top: `${zero}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })}
+      {METRICS.map((metric) => (
+        <Row key={metric.key} metric={metric} values={data.metrics[metric.key]} data={data} />
+      ))}
     </div>
   );
 }
 
-const SKELETON_YEARS = 5;
+function Row({ metric, values, data }: { metric: Metric; values: (number | null)[]; data: Fundamentals }) {
+  const present = values.filter((value) => value !== null);
+  const top = Math.max(0, ...present);
+  const bottom = Math.min(0, ...present);
+  const span = top - bottom;
+  const zero = span ? (top / span) * 100 : 100; // baseline, % from the top of the plot
+
+  return (
+    <div role="row" className={ROW}>
+      <span role="rowheader" className={LABEL}>
+        {metric.label}
+      </span>
+      {values.map((value, i) => (
+        <div key={data.years[i]} role="cell">
+          <div
+            title={value === null ? undefined : metric.exact?.(value, data.currency)}
+            className={`text-center text-[13px] tabular-nums sm:text-sm ${emphasis(i === values.length - 1)}`}
+          >
+            {value === null ? "—" : metric.format(value, data.currency)}
+          </div>
+          {/* A metric with no figures at all (gross margin for a bank) keeps its row but needs no plot. */}
+          {present.length > 0 && (
+            <div aria-hidden className="relative mt-1.5 h-9">
+              {value !== null && value !== 0 && (
+                <span
+                  className={`absolute left-1/2 w-6 -translate-x-1/2 ${value > 0 ? "rounded-t bg-bar" : "rounded-b bg-bar-loss"}`}
+                  style={{
+                    [value > 0 ? "bottom" : "top"]: `${value > 0 ? 100 - zero : zero}%`,
+                    height: `max(2px, ${(Math.abs(value) / span) * 100}%)`,
+                  }}
+                />
+              )}
+              <span className="absolute inset-x-0 h-px bg-axis" style={{ top: `${zero}%` }} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const SKELETON_BARS = ["40%", "55%", "50%", "75%", "90%"];
 
 /** The table's shape while a company loads: real metric names, placeholder numbers. */
 export function MetricsSkeleton() {
   return (
-    <div style={years(SKELETON_YEARS)} className="animate-pulse rounded-2xl border border-line bg-surface">
+    <div
+      style={columns(SKELETON_BARS.length)}
+      className="rounded-2xl border border-line bg-surface motion-safe:animate-pulse"
+    >
       <div className={`${GRID} px-2 py-2.5 md:px-4`}>
         <span className="max-md:hidden" />
         {SKELETON_BARS.map((_, i) => (
