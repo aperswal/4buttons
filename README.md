@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fundamentals
 
-## Getting Started
+Type a ticker or company name and get five fiscal years of:
 
-First, run the development server:
+| Metric | How it is calculated |
+| --- | --- |
+| ROIC | Operating income after tax ÷ average of opening and closing (debt + equity) |
+| Net income | As reported |
+| EPS | Diluted, restated for any later stock splits |
+| Debt to equity | Total debt ÷ shareholders' equity |
+| Gross margin | Gross profit ÷ revenue |
+| Net margin | Net income ÷ revenue |
+| P/E | Closing price on the last day of the fiscal year ÷ that year's EPS |
+
+A dash means the figure does not exist or has no meaning for that year (a P/E on a loss, debt to equity on negative equity, gross margin for a bank).
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # metric calculations
+npm run typecheck
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `SEC_USER_AGENT` to a name and contact email (`"Jane Doe jane@example.com"`). The SEC asks every client to identify itself and may throttle ones that do not.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Where things are
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/lib/compute.ts        raw SEC facts + prices → the seven metrics (pure, tested)
+src/lib/sec.ts            SEC EDGAR: ticker list and each company's reported facts
+src/lib/prices.ts         Yahoo: daily closes and splits
+src/lib/fundamentals.ts   ties the three together, cached per ticker
+src/lib/format.ts         the metric list and how each value is written
+src/components/           search box, metrics table
+src/app/[ticker]/         the company page
+```
 
-## Learn More
+## Data
 
-To learn more about Next.js, take a look at the following resources:
+Financials come from the SEC's XBRL company facts, the figures companies file in their annual reports (10-K, 20-F, 40-F). Anything listed in the US is covered. Companies tag the same line item under different names, so `compute.ts` keeps an ordered list of candidates for each; when a company shows a dash where a number should be, the fix is usually one more tag in that list.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Prices come from Yahoo's chart endpoint and are only used for P/E and for restating EPS across splits. If Yahoo is unreachable the page still renders, with P/E blank. P/E is also blank for companies that report in a currency other than the one their US listing trades in.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Speed
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A company page is built on its first visit and served as static HTML for a day after that. The first visitor sees the page frame immediately and the numbers as soon as the SEC responds. The search box downloads the ticker list once and filters it in the browser, so results appear as you type.
