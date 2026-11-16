@@ -30,7 +30,9 @@ Set `SEC_USER_AGENT` to a name and contact email (`"Jane Doe jane@example.com"`)
 
 ```
 src/lib/compute.ts        raw SEC facts + prices → the seven metrics (pure, tested)
+src/lib/fixtures/         real filings (AAPL, NVDA, TSLA) the tests check against
 src/lib/sec.ts            SEC EDGAR: ticker list and each company's reported facts
+src/lib/tidy-name.ts      company names as people write them, not as the SEC lists them
 src/lib/prices.ts         Yahoo: daily closes and splits
 src/lib/fundamentals.ts   ties the three together, cached per ticker
 src/lib/format.ts         the metric list and how each value is written
