@@ -29,12 +29,13 @@ function loadCompanies(): Promise<Indexed[]> {
 // The list arrives largest-company-first, so keeping its order within a tier ranks by size.
 function match(companies: Indexed[], query: string): Entry[] {
   const needle = query.toLowerCase();
+  const symbol = needle.replace(".", "-"); // BRK.B is listed as BRK-B
   const exact: Entry[] = [];
   const prefix: Entry[] = [];
   const word: Entry[] = [];
   for (const { entry, ticker, name } of companies) {
-    if (ticker === needle) exact.push(entry);
-    else if (ticker.startsWith(needle) || name.startsWith(needle)) prefix.push(entry);
+    if (ticker === symbol) exact.push(entry);
+    else if (ticker.startsWith(symbol) || name.startsWith(needle)) prefix.push(entry);
     else if (name.includes(` ${needle}`)) word.push(entry);
   }
   return [...exact, ...prefix, ...word].slice(0, LIMIT);

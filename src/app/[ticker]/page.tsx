@@ -22,7 +22,7 @@ export default function Page({ params }: PageProps<"/[ticker]">) {
 }
 
 async function Company({ params }: Pick<PageProps<"/[ticker]">, "params">) {
-  const ticker = decodeURIComponent((await params).ticker).toUpperCase();
+  const ticker = (await params).ticker.toUpperCase().replace(".", "-"); // BRK.B is filed as BRK-B
   const company = TICKER.test(ticker) ? await getFundamentals(ticker) : null;
 
   if (!company) {
