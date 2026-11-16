@@ -169,7 +169,23 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
           large ? "h-14 rounded-2xl pr-12 pl-12 text-lg" : "h-10 rounded-xl pr-9 pl-9 text-base sm:text-sm"
         }`}
       />
-      {!query && (
+      {query ? (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onMouseDown={(event) => event.preventDefault() /* keep focus in the input */}
+          onClick={() => {
+            setQuery("");
+            setActive(0);
+            input.current?.focus();
+          }}
+          className={`absolute top-1/2 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-ink-3 hover:bg-wash hover:text-ink ${large ? "right-3" : "right-1.5"}`}
+        >
+          <svg aria-hidden viewBox="0 0 16 16" className="size-3.5 fill-none stroke-current stroke-[1.75]">
+            <path d="m4 4 8 8M12 4l-8 8" strokeLinecap="round" />
+          </svg>
+        </button>
+      ) : (
         <kbd
           aria-hidden
           className={`pointer-events-none absolute top-1/2 hidden -translate-y-1/2 rounded-md border border-line px-1.5 font-sans text-xs text-ink-3 sm:block ${large ? "right-4" : "right-2.5"}`}
@@ -208,7 +224,7 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
               onClick={close}
               className="flex h-10 items-center gap-3 rounded-lg px-3 aria-selected:bg-wash"
             >
-              <span className="w-16 shrink-0 font-mono text-sm font-medium">{ticker}</span>
+              <span className="w-16 shrink-0 text-sm font-semibold tracking-wide">{ticker}</span>
               <span className="truncate text-sm text-ink-2">{name}</span>
             </Link>
           );

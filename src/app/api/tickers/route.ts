@@ -7,6 +7,6 @@ export async function GET() {
   const companies = await getCompanies();
   return Response.json(
     companies.map((c) => [c.ticker, c.name]),
-    { headers: { "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800" } },
+    { headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800" } },
   );
 }
