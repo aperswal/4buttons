@@ -16,3 +16,11 @@ test("registration suffixes are dropped and mixed-case names are left alone", ()
   assert.equal(tidyName("Saputo Inc./ADR"), "Saputo Inc.");
   assert.equal(tidyName("Apple Inc."), "Apple Inc.");
 });
+
+test("a name the SEC wrote half in capitals is finished off, leaving acronyms alone", () => {
+  assert.equal(tidyName("PROCTER & GAMBLE Co"), "Procter & Gamble Co");
+  assert.equal(tidyName("CVS HEALTH Corp"), "CVS Health Corp");
+  assert.equal(tidyName("GE Vernova Inc."), "GE Vernova Inc.");
+  assert.equal(tidyName("MSCI Inc."), "MSCI Inc.");
+  assert.equal(tidyName("S&P Global Inc."), "S&P Global Inc.");
+});
