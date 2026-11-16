@@ -169,8 +169,20 @@ export function compute(
     const flow = (tags: string[]) => find(company, tags, end, coversFullYear)?.fact.val ?? null;
     const balance = (tags: string[]) => find(company, tags, end, isBalance)?.fact.val ?? null;
 
+    // "Revenues" is not always the income statement's line: Hasbro's also counts what its segments sell each
+    // other. The statement's own revenue is the one that leaves operating income once total costs are taken off.
+    const costs = flow(TAGS.totalCosts);
+    const operatingIncome = flow(TAGS.operatingIncome);
+    const reconciled =
+      costs !== null && operatingIncome !== null
+        ? TAGS.revenue
+            .map((tag) => flow([tag]))
+            .find((r) => r !== null && Math.abs(r - costs - operatingIncome) <= Math.abs(r) / 1000)
+        : null;
     const revenue =
-      flow(TAGS.revenue) ?? (flow(TAGS.netInterestIncome) === null ? flow(TAGS.revenueFromCustomers) : null);
+      reconciled ??
+      flow(TAGS.revenue) ??
+      (flow(TAGS.netInterestIncome) === null ? flow(TAGS.revenueFromCustomers) : null);
     const costOfRevenue = flow(TAGS.insuranceClaims) === null ? flow(TAGS.costOfRevenue) : null;
     const grossProfit =
       flow(TAGS.grossProfit) ?? (revenue !== null && costOfRevenue !== null ? revenue - costOfRevenue : null);
@@ -195,7 +207,7 @@ export function compute(
       flow(TAGS.pretaxIncome) ??
       (pretaxDomestic !== null && pretaxForeign !== null ? pretaxDomestic + pretaxForeign : null);
     const interest = flow(TAGS.interestExpense);
-    const ebit = flow(TAGS.operatingIncome) ?? (pretax !== null ? pretax + (interest ?? 0) : null);
+    const ebit = operatingIncome ?? (pretax !== null ? pretax + (interest ?? 0) : null);
 
     return {
       end,

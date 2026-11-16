@@ -18,6 +18,8 @@ export const TAGS = {
   // IFRS filers that tag no total. For a bank this is only its fees, so it is not used beside net interest income.
   revenueFromCustomers: ["RevenueFromSaleOfGoods", "RevenueFromContractsWithCustomers"],
   netInterestIncome: ["InterestRevenueExpense"],
+  // Everything between revenue and operating income, as one line.
+  totalCosts: ["CostsAndExpenses"],
   costOfRevenue: [
     "CostOfRevenue",
     "CostOfGoodsAndServicesSold",

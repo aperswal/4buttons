@@ -215,6 +215,24 @@ test("total revenue is the Revenues line, whether contract revenue is a part of 
   close(netMargin(150 * B), 0.1);
 });
 
+test("when Revenues is not the income statement's line, revenue is the figure that reconciles to operating income", () => {
+  const netMargin = (extra: Record<string, Fact[]>) =>
+    compute(
+      company({
+        NetIncomeLoss: [year("2025-12-31", 9 * B)],
+        Revenues: [year("2025-12-31", 100 * B)], // segment sales, including those to other segments
+        RevenueFromContractWithCustomerExcludingAssessedTax: [year("2025-12-31", 90 * B)],
+        OperatingIncomeLoss: [year("2025-12-31", 20 * B)],
+        ...extra,
+      }),
+      null,
+    ).metrics.netMargin[0];
+  close(netMargin({ CostsAndExpenses: [year("2025-12-31", 70 * B)] }), 0.1);
+  // Costs that reconcile to neither, or no total of costs at all, leave the Revenues line in place.
+  close(netMargin({ CostsAndExpenses: [year("2025-12-31", 60 * B)] }), 0.09);
+  close(netMargin({}), 0.09);
+});
+
 test("revenue from customers stands in for a missing total, but not for a bank", () => {
   const netMargin = (extra: Record<string, Fact[]>) =>
     compute(
@@ -602,6 +620,46 @@ test("Southern Copper: stock dividends, which the company restates for and Yahoo
   near(at(result, 2021).pe, 61.33 / 4.39, 0.1);
   // A dividend paid in shares after the year end but before the report (February 2026) is not in the report.
   near(at(result, 2025).pe, 143.47 / 5.24, 0.01);
+});
+
+test("Procter & Gamble: a June year end, as reported", () => {
+  const { facts, prices } = fixture("pg");
+  const result = compute({ facts }, prices);
+  assert.equal(result.fiscalYearEndMonth, 6);
+  assert.deepEqual(result.years, [2022, 2023, 2024, 2025, 2026]);
+  assert.deepEqual(result.metrics.netIncome, [14_742e6, 14_653e6, 14_879e6, 15_974e6, 16_046e6]);
+  assert.deepEqual(result.metrics.eps, [5.81, 5.9, 6.02, 6.51, 6.62]);
+
+  const fy2024 = at(result, 2024);
+  // $84,039M of net sales, $40,848M of cost of products sold.
+  near(fy2024.grossMargin, 0.514, 0.0005);
+  near(fy2024.netMargin, 0.177, 0.0005);
+  // $7,191M due within a year plus $25,269M of long-term debt, against $50,559M of total shareholders' equity.
+  near(fy2024.debtToEquity, 32_460 / 50_559, 1e-9);
+  near(fy2024.pe, 164.92 / 6.02, 0.01);
+});
+
+test("Hasbro: revenue is net revenues, not the segment total, and the loss years have no P/E", () => {
+  const { facts, prices } = fixture("has");
+  const result = compute({ facts }, prices);
+  assert.equal(result.fiscalYearEndMonth, 12);
+  assert.deepEqual(result.years, [2021, 2022, 2023, 2024, 2025]);
+  assert.deepEqual(result.metrics.netIncome, [428.7e6, 203.5e6, -1_489.3e6, 385.6e6, -322.4e6]);
+  assert.deepEqual(result.metrics.eps, [3.1, 1.46, -10.73, 2.75, -2.3]);
+  assert.deepEqual(
+    result.metrics.pe.map((pe) => pe !== null),
+    [true, true, false, true, false],
+  );
+
+  const fy2023 = at(result, 2023);
+  // A $1,489.3M loss on $5,003.3M of net revenues. The Revenues tag holds $5,710.6M, which counts sales between segments.
+  near(fy2023.netMargin, -1_489.3 / 5_003.3, 1e-9);
+  // Cost of sales was $1,706.0M. Royalties and program amortization are separate lines.
+  near(fy2023.grossMargin, 1 - 1_706 / 5_003.3, 1e-9);
+  // $500.0M current portion plus $2,965.8M of long-term debt, against $1,087.0M of total shareholders' equity.
+  near(fy2023.debtToEquity, 3_465.8 / 1_087, 1e-9);
+  near(at(result, 2024).netMargin, 385.6 / 4_135.5, 1e-9);
+  near(at(result, 2024).pe, 56.7 / 2.75, 0.01);
 });
 
 test("Visa: EPS is reported per share class only, so it and P/E come from Yahoo", () => {
