@@ -8,7 +8,7 @@ export default function CompanyError({ retry }: { error: unknown; retry: () => v
   return (
     <>
       <div className="pt-6 pb-5">
-        <h1 className="text-4xl font-semibold tracking-tight break-all">{decodeURIComponent(ticker).toUpperCase()}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight break-all">{ticker.toUpperCase()}</h1>
         <p className="mt-1 min-h-6 text-ink-2" />
       </div>
       <div className="flex flex-col items-center gap-5 rounded-2xl border border-line bg-surface px-6 py-16 text-ink-2">

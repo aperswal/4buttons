@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { type Entry, useRecents } from "@/lib/recents";
@@ -28,12 +29,13 @@ function loadCompanies(): Promise<Indexed[]> {
 // The list arrives largest-company-first, so keeping its order within a tier ranks by size.
 function match(companies: Indexed[], query: string): Entry[] {
   const needle = query.toLowerCase();
+  const symbol = needle.replace(".", "-"); // BRK.B is listed as BRK-B
   const exact: Entry[] = [];
   const prefix: Entry[] = [];
   const word: Entry[] = [];
   for (const { entry, ticker, name } of companies) {
-    if (ticker === needle) exact.push(entry);
-    else if (ticker.startsWith(needle) || name.startsWith(needle)) prefix.push(entry);
+    if (ticker === symbol) exact.push(entry);
+    else if (ticker.startsWith(symbol) || name.startsWith(needle)) prefix.push(entry);
     else if (name.includes(` ${needle}`)) word.push(entry);
   }
   return [...exact, ...prefix, ...word].slice(0, LIMIT);
@@ -62,6 +64,11 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
     };
   }, [attempt]);
 
+  // Pages stay mounted, hidden, while you browse elsewhere; refocus when this one is shown again.
+  useEffect(() => {
+    if (autoFocus) input.current?.focus();
+  }, [autoFocus]);
+
   useEffect(() => {
     const focusOnSlash = (event: KeyboardEvent) => {
       const typing = event.target instanceof HTMLElement && event.target.closest("input, textarea, [contenteditable]");
@@ -87,14 +94,14 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
   const showPanel = open && (typed !== "" || recents.length > 0);
   const selected = options[Math.min(active, options.length - 1)];
 
-  useEffect(() => {
-    if (open && selected) router.prefetch(`/${selected[0]}`);
-  }, [open, selected, router]);
-
-  function go(ticker: string) {
+  function close() {
     setQuery("");
     setOpen(false);
     input.current?.blur();
+  }
+
+  function go(ticker: string) {
+    close();
     router.push(`/${ticker}`);
   }
 
@@ -171,45 +178,45 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
         </kbd>
       )}
 
-      <ul
+      <div
         id={listId}
         role="listbox"
         hidden={!showPanel}
         onMouseDown={(event) => event.preventDefault() /* keep focus in the input */}
         className="absolute inset-x-0 top-full z-20 mt-2 rounded-xl border border-line bg-surface p-1 shadow-xl shadow-black/5"
       >
-        {!typed && (
-          <li role="presentation" className="px-3 pt-2 pb-1 text-xs text-ink-3">
-            Recent
-          </li>
-        )}
+        {!typed && <div className="px-3 pt-2 pb-1 text-xs text-ink-3">Recent</div>}
         {waiting &&
           [0, 1, 2].map((i) => (
-            <li key={i} role="presentation" className="flex h-10 animate-pulse items-center gap-3 px-3">
+            <div key={i} className="flex h-10 animate-pulse items-center gap-3 px-3">
               <span className="h-3 w-10 rounded bg-wash" />
               <span className="h-3 w-40 rounded bg-wash" />
-            </li>
+            </div>
           ))}
-        {options.map(([ticker, name]) => (
-          <li
-            key={ticker}
-            id={`${listId}-${ticker}`}
-            role="option"
-            aria-selected={selected?.[0] === ticker}
-            onMouseMove={() => setActive(options.findIndex((option) => option[0] === ticker))}
-            onClick={() => go(ticker)}
-            className="flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 aria-selected:bg-wash"
-          >
-            <span className="w-16 shrink-0 font-mono text-sm font-medium">{ticker}</span>
-            <span className="truncate text-sm text-ink-2">{name}</span>
-          </li>
-        ))}
+        {options.map(([ticker, name], index) => {
+          const isSelected = selected?.[0] === ticker;
+          return (
+            <Link
+              key={ticker}
+              href={`/${ticker}`}
+              id={`${listId}-${ticker}`}
+              role="option"
+              aria-selected={isSelected}
+              tabIndex={-1}
+              prefetch={isSelected ? true : "auto"} // fetch the highlighted company before it is opened
+              onMouseMove={() => setActive(index)}
+              onClick={close}
+              className="flex h-10 items-center gap-3 rounded-lg px-3 aria-selected:bg-wash"
+            >
+              <span className="w-16 shrink-0 font-mono text-sm font-medium">{ticker}</span>
+              <span className="truncate text-sm text-ink-2">{name}</span>
+            </Link>
+          );
+        })}
         {typed && !waiting && options.length === 0 && (
-          <li role="presentation" className="flex h-10 items-center px-3 text-sm text-ink-2">
-            No matches
-          </li>
+          <div className="flex h-10 items-center px-3 text-sm text-ink-2">No matches</div>
         )}
-      </ul>
+      </div>
     </div>
   );
 }
