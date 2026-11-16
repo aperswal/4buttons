@@ -1,4 +1,5 @@
 import { cacheLife } from "next/cache";
+import { combineFacts } from "./combine-facts";
 import type { CompanyFacts } from "./compute";
 import { tidyName } from "./tidy-name";
 
@@ -18,8 +19,22 @@ export async function getCompanies(): Promise<Company[]> {
   return rows.map((row) => ({ ticker: row.ticker.toUpperCase(), name: tidyName(row.title), cik: row.cik_str }));
 }
 
+// A company that reorganises under a new holding company gets a new SEC number, and its earlier filings stay
+// under the old one. The SEC publishes no link between the two, so each is listed here: new number → old number.
+const PREDECESSOR: Record<number, number> = {
+  2115436: 34088, // ExxonMobil Holdings (2026) ← Exxon Mobil Corporation
+};
+
 /** Everything a company has reported in XBRL, or null if it has never filed any. */
 export async function getCompanyFacts(cik: number): Promise<CompanyFacts | null> {
+  const predecessor = PREDECESSOR[cik];
+  if (predecessor === undefined) return fetchCompanyFacts(cik);
+
+  const [current, earlier] = await Promise.all([fetchCompanyFacts(cik), fetchCompanyFacts(predecessor)]);
+  return current && earlier ? combineFacts(current, earlier) : (current ?? earlier);
+}
+
+async function fetchCompanyFacts(cik: number): Promise<CompanyFacts | null> {
   const id = String(cik).padStart(10, "0");
   const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${id}.json`, { headers });
   if (res.status === 404) return null;
