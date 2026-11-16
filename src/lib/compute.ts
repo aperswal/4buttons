@@ -44,6 +44,9 @@ const TAGS = {
     "RevenuesNetOfInterestExpense",
     "Revenue",
   ],
+  // IFRS filers that tag no total. For a bank this is only its fees, so it is not used beside net interest income.
+  revenueFromCustomers: ["RevenueFromSaleOfGoods", "RevenueFromContractsWithCustomers"],
+  netInterestIncome: ["InterestRevenueExpense"],
   costOfRevenue: [
     "CostOfRevenue",
     "CostOfGoodsAndServicesSold",
@@ -67,6 +70,12 @@ const TAGS = {
     "EarningsPerShareBasicAndDiluted",
     "EarningsPerShareBasic",
     "BasicEarningsLossPerShare",
+    "DilutedEarningsLossPerShareFromContinuingOperations",
+    "BasicAndDilutedEarningsLossPerShare",
+    "BasicEarningsLossPerShareFromContinuingOperations",
+    // Partnerships report per unit.
+    "NetIncomeLossNetOfTaxPerOutstandingLimitedPartnershipUnitDiluted",
+    "IncomeLossFromContinuingOperationsNetOfTaxPerOutstandingLimitedPartnershipUnitDiluted",
   ],
   operatingIncome: ["OperatingIncomeLoss", "ProfitLossFromOperatingActivities"],
   pretaxIncome: [
@@ -74,6 +83,9 @@ const TAGS = {
     "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
     "ProfitLossBeforeTax",
   ],
+  // Some companies give pre-tax income only in the tax note, split into what was earned at home and abroad.
+  pretaxIncomeDomestic: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic"],
+  pretaxIncomeForeign: ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesForeign"],
   incomeTax: ["IncomeTaxExpenseBenefit", "IncomeTaxExpenseContinuingOperations"],
   interestExpense: ["InterestExpense", "InterestExpenseNonoperating", "InterestExpenseDebt", "FinanceCosts"],
   equity: [
@@ -81,6 +93,7 @@ const TAGS = {
     "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
     "EquityAttributableToOwnersOfParent",
     "Equity",
+    "PartnersCapital",
   ],
   // Long-term debt as a single balance-sheet line.
   debtNoncurrent: ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongtermBorrowings"],
@@ -108,8 +121,14 @@ const TAGS = {
 
 type Series = { unit: string; facts: Fact[] };
 
+const newestEnd = (concept: Concept) =>
+  Object.values(concept.units).reduce((newest, facts) => facts.reduce((n, f) => (f.end > n ? f.end : n), newest), "");
+
 function series(company: CompanyFacts, tag: string): Series | null {
-  const concept = company.facts["us-gaap"]?.[tag] ?? company.facts["ifrs-full"]?.[tag];
+  // A company that moved from US GAAP to IFRS has the same tag name under both; the one still in use is wanted.
+  const concept = [company.facts["us-gaap"]?.[tag], company.facts["ifrs-full"]?.[tag]]
+    .filter((c) => c !== undefined)
+    .sort((a, b) => newestEnd(b).localeCompare(newestEnd(a)))[0];
   if (!concept) return null;
   // Foreign filers sometimes add a sparse USD convenience translation; the real series is the longest.
   const [unit, facts] = Object.entries(concept.units).sort((a, b) => b[1].length - a[1].length)[0];
@@ -173,7 +192,8 @@ export function compute(company: CompanyFacts, prices: Prices | null): Financial
     const flow = (tags: string[]) => find(company, tags, end, coversFullYear)?.fact.val ?? null;
     const balance = (tags: string[]) => find(company, tags, end, isBalance)?.fact.val ?? null;
 
-    const revenue = flow(TAGS.revenue);
+    const revenue =
+      flow(TAGS.revenue) ?? (flow(TAGS.netInterestIncome) === null ? flow(TAGS.revenueFromCustomers) : null);
     const costOfRevenue = flow(TAGS.insuranceClaims) === null ? flow(TAGS.costOfRevenue) : null;
     const grossProfit =
       flow(TAGS.grossProfit) ?? (revenue !== null && costOfRevenue !== null ? revenue - costOfRevenue : null);
@@ -184,7 +204,11 @@ export function compute(company: CompanyFacts, prices: Prices | null): Financial
     const reportedEps = find(company, TAGS.eps, end, coversFullYear);
     const eps = reportedEps && reportedEps.fact.val / splitFactorSince(prices, reportedEps.fact.filed);
 
-    const pretax = flow(TAGS.pretaxIncome);
+    const pretaxDomestic = flow(TAGS.pretaxIncomeDomestic);
+    const pretaxForeign = flow(TAGS.pretaxIncomeForeign);
+    const pretax =
+      flow(TAGS.pretaxIncome) ??
+      (pretaxDomestic !== null && pretaxForeign !== null ? pretaxDomestic + pretaxForeign : null);
     const tax = flow(TAGS.incomeTax);
     const interest = flow(TAGS.interestExpense);
     const ebit = flow(TAGS.operatingIncome) ?? (pretax !== null ? pretax + (interest ?? 0) : null);

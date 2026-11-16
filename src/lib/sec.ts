@@ -23,6 +23,7 @@ export async function getCompanies(): Promise<Company[]> {
 // under the old one. The SEC publishes no link between the two, so each is listed here: new number → old number.
 const PREDECESSOR: Record<number, number> = {
   2115436: 34088, // ExxonMobil Holdings (2026) ← Exxon Mobil Corporation
+  2012383: 1364742, // BlackRock, Inc. (2024, formed to buy Global Infrastructure Partners) ← now BlackRock Finance
 };
 
 /** Everything a company has reported in XBRL, or null if it has never filed any. */

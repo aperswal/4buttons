@@ -114,6 +114,27 @@ test("total revenue is the Revenues line, whether contract revenue is a part of 
   close(netMargin(150 * B), 0.1);
 });
 
+test("revenue from customers stands in for a missing total, but not for a bank", () => {
+  const netMargin = (extra: Record<string, Fact[]>) =>
+    compute(
+      {
+        facts: {
+          "ifrs-full": Object.fromEntries(
+            Object.entries({
+              ProfitLoss: [year("2025-12-31", 10 * B)],
+              RevenueFromContractsWithCustomers: [year("2025-12-31", 100 * B)],
+              ...extra,
+            }).map(([tag, facts]) => [tag, { units: { EUR: facts } }]),
+          ),
+        },
+      },
+      null,
+    ).metrics.netMargin[0];
+  close(netMargin({}), 0.1);
+  // A bank's contracts with customers are its fees; most of its income is interest.
+  assert.equal(netMargin({ InterestRevenueExpense: [year("2025-12-31", 300 * B)] }), null);
+});
+
 test("an insurer has no gross margin", () => {
   const { metrics } = compute(
     company({
@@ -188,6 +209,50 @@ test("reports in the filer's own currency, and skips P/E when that is not the pr
   );
   assert.equal(result.currency, "TWD");
   assert.equal(result.metrics.pe[0], null);
+});
+
+test("a partnership's capital is its equity and its earnings per unit are its EPS", () => {
+  const partnership = company({
+    NetIncomeLoss: [year("2025-12-31", 6 * B)],
+    PartnersCapital: [balance("2025-12-31", 30 * B)],
+    LongTermDebtNoncurrent: [balance("2025-12-31", 33 * B)],
+  });
+  partnership.facts["us-gaap"].NetIncomeLossNetOfTaxPerOutstandingLimitedPartnershipUnitDiluted = {
+    units: { "USD/shares": [year("2025-12-31", 2.5)] },
+  };
+  const { metrics } = compute(partnership, { closes: [["2025-12-31", 30]], splits: [] });
+  assert.equal(metrics.eps[0], 2.5);
+  close(metrics.pe[0], 12);
+  close(metrics.debtToEquity[0], 1.1);
+});
+
+test("pre-tax income given only as domestic and foreign parts is their sum", () => {
+  const { metrics } = compute(
+    company({
+      NetIncomeLoss: [year("2025-12-31", 6 * B)],
+      IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic: [year("2025-12-31", 6 * B)],
+      IncomeLossFromContinuingOperationsBeforeIncomeTaxesForeign: [year("2025-12-31", 4 * B)],
+      IncomeTaxExpenseBenefit: [year("2025-12-31", 3 * B)],
+      StockholdersEquity: [balance("2025-12-31", 70 * B)],
+    }),
+    null,
+  );
+  // No operating income line, so 10 before tax at the 30% actually paid, on 70 invested.
+  close(metrics.roic[0], 0.1);
+});
+
+test("a company that changed from US GAAP to IFRS is read from the standard it uses now", () => {
+  const result = compute(
+    {
+      facts: {
+        "us-gaap": { ProfitLoss: { units: { USD: [year("2013-12-31", 1 * B)] } } },
+        "ifrs-full": { ProfitLoss: { units: { USD: [year("2024-12-31", 4 * B), year("2025-12-31", 5 * B)] } } },
+      },
+    },
+    null,
+  );
+  assert.deepEqual(result.years, [2024, 2025]);
+  assert.deepEqual(result.metrics.netIncome, [4 * B, 5 * B]);
 });
 
 test("a company with no financial statements has no years", () => {
