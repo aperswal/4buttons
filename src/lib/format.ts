@@ -15,15 +15,19 @@ const money = (options: Intl.NumberFormatOptions): Format => (value, currency) =
   );
 
 const compactMoney = money({ notation: "compact", minimumSignificantDigits: 3, maximumSignificantDigits: 3 });
+const wholeMoney = money({ maximumFractionDigits: 0 });
 const perShare = money({ minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const percent: Format = (value) => minus(`${(value * 100).toFixed(Math.abs(value) < 1 ? 1 : 0)}%`);
 const ratio: Format = (value) => minus(value.toFixed(2));
 const multiple: Format = (value) => minus(value.toFixed(Math.abs(value) < 100 ? 1 : 0));
 
+/** `exact` is the unrounded figure, shown on hover where `format` abbreviates. */
+export type Metric = { key: MetricKey; label: string; format: Format; exact?: Format };
+
 /** The metrics, in display order. */
-export const METRICS: { key: MetricKey; label: string; format: Format }[] = [
+export const METRICS: Metric[] = [
   { key: "roic", label: "ROIC", format: percent },
-  { key: "netIncome", label: "Net income", format: compactMoney },
+  { key: "netIncome", label: "Net income", format: compactMoney, exact: wholeMoney },
   { key: "eps", label: "EPS", format: perShare },
   { key: "debtToEquity", label: "Debt to equity", format: ratio },
   { key: "grossMargin", label: "Gross margin", format: percent },

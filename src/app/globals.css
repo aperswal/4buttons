@@ -47,3 +47,14 @@ body {
   background: var(--page);
   color: var(--ink);
 }
+
+/* Loading frames wait a moment before showing, so a page that is ready almost at once never flashes one. */
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+@utility appear-late {
+  animation: appear 150ms 150ms both;
+}

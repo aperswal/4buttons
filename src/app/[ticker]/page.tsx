@@ -6,6 +6,7 @@ import { getFundamentals } from "@/lib/fundamentals";
 const TICKER = /^[A-Z0-9.-]{1,10}$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+
 // Cache Components needs one sample param to build the route. No ticker is known
 // at build time, so this one deliberately matches nothing. Real tickers render on
 // their first visit and are served from cache after that.
@@ -63,14 +64,14 @@ function Notice({ children }: { children: React.ReactNode }) {
 
 function Loading() {
   return (
-    <>
-      <div className="animate-pulse pt-6 pb-5">
+    <div className="appear-late">
+      <div className="pt-6 pb-5 motion-safe:animate-pulse">
         <div className="h-10 w-28 rounded-lg bg-wash" />
         <div className="mt-1 flex h-6 items-center">
           <div className="h-4 w-48 rounded bg-wash" />
         </div>
       </div>
       <MetricsSkeleton />
-    </>
+    </div>
   );
 }
