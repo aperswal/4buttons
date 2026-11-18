@@ -10,6 +10,7 @@ export type CompanyFacts = { facts: Record<string, Record<string, Concept>> };
 
 export type Prices = {
   currency: string;
+  name?: string; // the company, as Yahoo names the listing
   closes: [date: string, close: number][]; // ascending; the price that traded that day
   // Every time Yahoo rescaled its price history, and by how much. It does so for a split or a stock dividend,
   // but also for a spin-off or when a depositary share changes how many shares it stands for. It does not say which.

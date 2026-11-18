@@ -3,7 +3,7 @@ import { yahooJson } from "./yahoo.ts";
 
 type Split = { date: number; numerator: number; denominator: number };
 type Chart = {
-  meta?: { currency?: string };
+  meta?: { currency?: string; longName?: string; shortName?: string };
   timestamp?: number[];
   indicators: { quote: [{ close: (number | null)[] }] };
   events?: { splits?: Record<string, Split> };
@@ -39,8 +39,10 @@ export function parseChart(chart: Chart | undefined): Prices | null {
   const rescaledAfter = (date: string) => events.reduce((factor, e) => (e.on > date ? factor * e.factor : factor), 1);
 
   const close = chart.indicators.quote[0].close;
+  const name = chart.meta?.longName ?? chart.meta?.shortName;
   return {
     currency: chart.meta?.currency ?? "USD",
+    ...(name && { name }),
     closes: chart.timestamp.flatMap((t, i) => {
       const value = close[i];
       const date = isoDate(t);

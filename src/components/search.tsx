@@ -81,16 +81,12 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
   }, []);
 
   const typed = query.trim();
-  // Before the list arrives (or if it never does), a typed ticker still goes straight to its page.
+  // A typed ticker can always be opened as it stands: before the list arrives, if it never does, and when
+  // nothing in it matches (the list is the SEC's, which leaves out most over-the-counter foreign listings).
   const typedTicker: Entry[] = TICKER_LIKE.test(typed) ? [[typed.toUpperCase(), ""]] : [];
   const waiting = typed !== "" && companies === "loading";
-  const options = !typed
-    ? recents
-    : companies === "loading"
-      ? []
-      : companies === "failed"
-        ? typedTicker
-        : match(companies, typed);
+  const matches = Array.isArray(companies) ? match(companies, typed) : [];
+  const options = !typed ? recents : matches.length || waiting ? matches : typedTicker;
   const showPanel = open && (typed !== "" || recents.length > 0);
   const selected = options[Math.min(active, options.length - 1)];
 
@@ -219,7 +215,8 @@ export function Search({ large = false, autoFocus = false }: { large?: boolean; 
               role="option"
               aria-selected={isSelected}
               tabIndex={-1}
-              prefetch={isSelected ? true : "auto"} // fetch the highlighted company before it is opened
+              // Fetch the highlighted company before it is opened, unless it is only a guess at a ticker.
+              prefetch={isSelected && name ? true : "auto"}
               onMouseMove={() => setActive(index)}
               onClick={close}
               className="flex h-10 items-center gap-3 rounded-lg px-3 aria-selected:bg-wash"

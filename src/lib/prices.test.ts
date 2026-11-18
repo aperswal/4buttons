@@ -102,6 +102,12 @@ test("the currency is the chart's", () => {
   assert.equal(parseChart(twdPerDollar)?.currency, "TWD");
 });
 
+test("the company's name comes with its prices, for tickers the SEC does not list", () => {
+  const named = { ...chart([["2025-12-31", 90]], []), meta: { currency: "USD", longName: "Nestlé S.A.", shortName: "NESTLE SA" } };
+  assert.equal(parseChart(named)?.name, "Nestlé S.A.");
+  assert.equal(parseChart(chart([["2025-12-31", 90]], []))?.name, undefined);
+});
+
 test("a chart with no price history is null", () => {
   assert.equal(parseChart(undefined), null);
   assert.equal(parseChart({ indicators: { quote: [{ close: [] }] } }), null);
