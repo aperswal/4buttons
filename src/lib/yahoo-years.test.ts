@@ -29,6 +29,18 @@ test("debt is borrowings due within a year plus those due later", () => {
   assert.equal(year.debt, 100);
 });
 
+test("where Yahoo gives no breakdown of the debt, its total stands in; where it does, the total is ignored", () => {
+  const [onlyTotal] = parseYahooYears(
+    response(series("annualNetIncome", [["2025-12-31", 9]]), series("annualTotalDebt", [["2025-12-31", 60]])),
+  );
+  assert.equal(onlyTotal.debt, 60);
+
+  const [both] = parseYahooYears(
+    response(series("annualLongTermDebt", [["2025-12-31", 70]]), series("annualTotalDebt", [["2025-12-31", 95]])),
+  );
+  assert.equal(both.debt, 70);
+});
+
 test("trailing twelve months to a quarter end, which Yahoo mixes in for some companies, are dropped", () => {
   // Toyota's "annual" EPS as Yahoo serves it.
   const years = parseYahooYears(

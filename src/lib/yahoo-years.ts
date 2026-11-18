@@ -16,6 +16,10 @@ const SERIES: Record<Exclude<keyof YahooYear, "end" | "currency">, string[]> = {
   equity: ["annualStockholdersEquity"],
 };
 
+// Yahoo does not split every company's borrowings into those two lines (Nestlé's are not). Its own total, which
+// also counts lease liabilities, is then the nearest figure, and far nearer than treating the debt as nil.
+const TOTAL_DEBT = "annualTotalDebt";
+
 type Point = { asOfDate: string; currencyCode?: string; reportedValue: { raw: number } } | null;
 type Timeseries = { timeseries?: { result?: ({ meta: { type: string[] } } & Record<string, unknown>)[] } };
 
@@ -33,6 +37,10 @@ export function parseYahooYears(json: Timeseries | null): YahooYear[] {
         years.set(point.asOfDate, { ...year, [field]: (year[field] ?? 0) + point.reportedValue.raw });
       }
     }
+  }
+  for (const point of (json?.timeseries?.result?.find((r) => r.meta.type[0] === TOTAL_DEBT)?.[TOTAL_DEBT] ?? []) as Point[]) {
+    const year = point && years.get(point.asOfDate);
+    if (year && year.debt === null) years.set(point.asOfDate, { ...year, debt: point.reportedValue.raw });
   }
   // For some companies Yahoo mixes trailing twelve months to a quarter end in among the fiscal years.
   // Fiscal years are whole years apart; counting back from the newest keeps them and drops the rest.
@@ -59,7 +67,7 @@ const EMPTY = {
 /** A company's recent fiscal years from Yahoo. Null when Yahoo cannot be reached, empty when it has none. */
 export async function getYahooYears(ticker: string, since: number): Promise<YahooYear[] | null> {
   const json = await yahooJson(`/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(ticker)}`, {
-    type: Object.values(SERIES).flat().join(","),
+    type: [...Object.values(SERIES).flat(), TOTAL_DEBT].join(","),
     period1: String(Math.floor(since / 1000)),
     period2: String(Math.floor(Date.now() / 1000)),
   });
